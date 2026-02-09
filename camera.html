@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrapfoto Camera</title>
+
+<style>
+body {
+  margin:0;
+  font-family: Arial, sans-serif;
+  background:#000;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  height:100vh;
+}
+
+video {
+  width:320px;
+  height:320px;
+  object-fit:cover;
+  border-radius:16px;
+}
+
+button {
+  margin-top:16px;
+  padding:12px 20px;
+  border:none;
+  border-radius:999px;
+  background:#fff;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+#countdown {
+  position:absolute;
+  font-size:72px;
+  color:white;
+  font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<div style="position:relative;">
+  <video id="video" autoplay playsinline></video>
+  <div id="countdown"></div>
+</div>
+
+<button onclick="startCapture()">Take 3 Photos</button>
+
+<script>
+let video = document.getElementById("video");
+let countdown = document.getElementById("countdown");
+let photos = [];
+let stream;
+
+async function startCamera(){
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "user" },
+    audio: false
+  });
+  video.srcObject = stream;
+}
+
+startCamera();
+
+function startCapture(){
+  photos = [];
+  let index = 0;
+
+  function capture(){
+    if(index === 3){
+      stream.getTracks().forEach(t => t.stop());
+
+      window.parent.postMessage({
+        type: "SCRAPFOTO_PHOTOS",
+        images: photos
+      }, "*");
+
+      return;
+    }
+
+    let count = 3;
+    countdown.innerText = count;
+
+    let timer = setInterval(()=>{
+      count--;
+      if(count === 0){
+        clearInterval(timer);
+        countdown.innerText = "";
+
+        let canvas = document.createElement("canvas");
+        canvas.width = 400;
+        canvas.height = 400;
+        canvas.getContext("2d").drawImage(video, 0, 0, 400, 400);
+        photos.push(canvas.toDataURL("image/jpeg", 0.8));
+
+        index++;
+        setTimeout(capture, 500);
+      } else {
+        countdown.innerText = count;
+      }
+    },1000);
+  }
+
+  capture();
+}
+</script>
+
+</body>
+</html>
